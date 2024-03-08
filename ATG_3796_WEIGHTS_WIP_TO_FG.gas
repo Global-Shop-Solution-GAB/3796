@@ -1,0 +1,68 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+V.Local.sError.Declare(String)
+V.Local.fWeight.Declare(Float)
+V.Local.sFG.Declare
+V.Local.sPart.Declare
+V.Local.sSfx.Declare
+V.Local.sSql.Declare
+V.Local.sWO.Declare
+
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+F.Intrinsic.Control.If(V.Caller.Hook,=,16504)
+	'Database connection
+	F.ODBC.Connection!Con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+	V.Local.sWO.Set(V.Passed.000003)
+	V.Local.sSfx.Set(V.Passed.000004)
+	V.Local.sFG.Set(V.Passed.000009)
+	V.Local.fWeight.Set(0)
+
+	F.Intrinsic.String.Concat("Select Part from JOB_OPERATIONS where Job='",V.Local.sWO,"' and suffix = '",V.Local.sSfx,"' and LMO = 'M' order by Part asc",V.Local.sSql)
+	F.ODBC.Connection!Con.OpenLocalRecordsetRO("rstPart",V.Local.sSql)
+	F.Intrinsic.Control.DoUntil(V.ODBC.Con!rstPart.EOF,=,True)
+		F.Intrinsic.Control.If(V.ODBC.Con!rstPart.FieldVal!Part,<>,"")
+			V.Local.sPart.Set(V.ODBC.Con!rstPart.FieldVal!Part)
+			F.Intrinsic.String.Concat("select LBS from INVENTORY_MST2 where RTrim(Part) = '",V.Local.sPart.Trim,"'",V.Local.sSql)
+			F.ODBC.Connection!Con.OpenLocalRecordsetRO("rstLBS",V.Local.sSql)
+			F.Intrinsic.Control.If(V.ODBC.Con!rstLBS.EOF,=,False)
+				F.Intrinsic.Math.Add(V.ODBC.Con!rstLBS.FieldVal!LBS,V.Local.fWeight,V.Local.fWeight)
+			F.Intrinsic.Control.EndIf
+			F.ODBC.Con!rstLBS.Close
+		F.Intrinsic.Control.EndIf
+		F.ODBC.Con!rstPart.MoveNext
+	F.Intrinsic.Control.Loop
+	F.ODBC.Con!rstPart.Close
+
+	'Update Weight
+	F.Intrinsic.String.Concat("Update INVENTORY_MST2 set LBS='",V.Local.fWeight,"' where part='",V.Local.sFG,"'",V.Local.sSql)
+	F.ODBC.Connection!Con.Execute(V.Local.sSql)
+
+	F.ODBC.Connection!Con.Close
+
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: ATG_3796_WEIGHTS_WIP_TO_FG.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+Program.Sub.Comments.Start
+${$0$}$ATG_WEIGHTS_WIP_TO_FG$}$CHANDANA$}$5/3/2012
+${$1$}$$}$$}$0$}$16504$}$JBS0052-POST-SAVE-HOOK$}$4/15/2016 9:34:20 AM$}$(Program: JB0052GI    ; Screen: JBS0052)
+
+Program.Sub.Comments.End
+
